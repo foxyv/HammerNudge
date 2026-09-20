@@ -14,7 +14,8 @@ namespace Dizzy.Nudge.Patches
                 nameof(GoPointer.MainButtonDown),
                 Type.EmptyTypes,
                 typeof(HammerNudgePatches),
-                nameof(HammerNudgePatches.MainButtonDownPostfix));
+                nameof(HammerNudgePatches.MainButtonDownPostfix),
+                Priority.First);
 
             TryPrefix(
                 harmony,
@@ -22,7 +23,8 @@ namespace Dizzy.Nudge.Patches
                 nameof(ShipItemHammer.OnAltActivate),
                 Type.EmptyTypes,
                 typeof(HammerNudgePatches),
-                nameof(HammerNudgePatches.OnAltActivatePrefix));
+                nameof(HammerNudgePatches.OnAltActivatePrefix),
+                Priority.First);
 
             TryPrefix(
                 harmony,
@@ -30,7 +32,8 @@ namespace Dizzy.Nudge.Patches
                 nameof(GoPointerButton.OnActivate),
                 Type.EmptyTypes,
                 typeof(HammerNudgePatches),
-                nameof(HammerNudgePatches.OnActivatePrefix));
+                nameof(HammerNudgePatches.OnActivatePrefix),
+                Priority.First);
 
             TryPrefix(
                 harmony,
@@ -38,7 +41,8 @@ namespace Dizzy.Nudge.Patches
                 nameof(GoPointerButton.OnActivate),
                 new[] { typeof(GoPointer) },
                 typeof(HammerNudgePatches),
-                nameof(HammerNudgePatches.OnActivatePointerPrefix));
+                nameof(HammerNudgePatches.OnActivatePointerPrefix),
+                Priority.First);
 
             TryPrefix(
                 harmony,
@@ -46,7 +50,8 @@ namespace Dizzy.Nudge.Patches
                 nameof(ShipItem.OnItemClick),
                 new[] { typeof(PickupableItem) },
                 typeof(HammerNudgePatches),
-                nameof(HammerNudgePatches.OnItemClickPrefix));
+                nameof(HammerNudgePatches.OnItemClickPrefix),
+                Priority.First);
 
             TryPostfix(
                 harmony,
@@ -54,7 +59,9 @@ namespace Dizzy.Nudge.Patches
                 nameof(LookUI.ShowLookText),
                 new[] { typeof(GoPointerButton) },
                 typeof(LookUIPatches),
-                nameof(LookUIPatches.ShowLookTextPostfix));
+                nameof(LookUIPatches.ShowLookTextPostfix),
+                Priority.Last,
+                new[] { "DogEggz.unlimitedhammer" });
         }
 
         private static void TryPrefix(
@@ -63,7 +70,8 @@ namespace Dizzy.Nudge.Patches
             string methodName,
             Type[] parameters,
             Type patchType,
-            string patchMethod)
+            string patchMethod,
+            int priority = Priority.Normal)
         {
             MethodInfo original = AccessTools.DeclaredMethod(target, methodName, parameters);
             MethodInfo prefix = AccessTools.DeclaredMethod(patchType, patchMethod);
@@ -75,7 +83,8 @@ namespace Dizzy.Nudge.Patches
 
             try
             {
-                harmony.Patch(original, prefix: new HarmonyMethod(prefix));
+                var method = new HarmonyMethod(prefix) { priority = priority };
+                harmony.Patch(original, prefix: method);
             }
             catch (Exception e)
             {
@@ -89,7 +98,9 @@ namespace Dizzy.Nudge.Patches
             string methodName,
             Type[] parameters,
             Type patchType,
-            string patchMethod)
+            string patchMethod,
+            int priority = Priority.Normal,
+            string[] after = null)
         {
             MethodInfo original = AccessTools.DeclaredMethod(target, methodName, parameters);
             MethodInfo postfix = AccessTools.DeclaredMethod(patchType, patchMethod);
@@ -101,7 +112,10 @@ namespace Dizzy.Nudge.Patches
 
             try
             {
-                harmony.Patch(original, postfix: new HarmonyMethod(postfix));
+                var method = new HarmonyMethod(postfix) { priority = priority };
+                if (after != null && after.Length > 0)
+                    method.after = after;
+                harmony.Patch(original, postfix: method);
             }
             catch (Exception e)
             {

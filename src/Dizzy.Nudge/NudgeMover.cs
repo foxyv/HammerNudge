@@ -31,10 +31,10 @@ namespace Dizzy.Nudge
 
         internal static bool IsNudgeTarget(ShipItem item)
         {
-            if (item == null || !item.sold || !item.nailed)
-                return false;
-
-            return ShipItemHammer.CanNail(item);
+            // Do not call ShipItemHammer.CanNail: other hammer mods postfix it, and
+            // an exception there would abort our click postfix and break the hammer.
+            // GoPointer already only looks at items the held hammer is allowed to use.
+            return item != null && item.sold && item.nailed;
         }
 
         internal static bool HoldingHammer(GoPointer pointer)
