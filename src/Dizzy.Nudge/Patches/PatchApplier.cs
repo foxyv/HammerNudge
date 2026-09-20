@@ -8,15 +8,6 @@ namespace Dizzy.Nudge.Patches
     {
         internal static void Apply(Harmony harmony)
         {
-            TryPostfix(
-                harmony,
-                typeof(GoPointer),
-                nameof(GoPointer.MainButtonDown),
-                Type.EmptyTypes,
-                typeof(HammerNudgePatches),
-                nameof(HammerNudgePatches.MainButtonDownPostfix),
-                Priority.First);
-
             TryPrefix(
                 harmony,
                 typeof(ShipItemHammer),
@@ -24,24 +15,6 @@ namespace Dizzy.Nudge.Patches
                 Type.EmptyTypes,
                 typeof(HammerNudgePatches),
                 nameof(HammerNudgePatches.OnAltActivatePrefix),
-                Priority.First);
-
-            TryPrefix(
-                harmony,
-                typeof(GoPointerButton),
-                nameof(GoPointerButton.OnActivate),
-                Type.EmptyTypes,
-                typeof(HammerNudgePatches),
-                nameof(HammerNudgePatches.OnActivatePrefix),
-                Priority.First);
-
-            TryPrefix(
-                harmony,
-                typeof(GoPointerButton),
-                nameof(GoPointerButton.OnActivate),
-                new[] { typeof(GoPointer) },
-                typeof(HammerNudgePatches),
-                nameof(HammerNudgePatches.OnActivatePointerPrefix),
                 Priority.First);
 
             TryPrefix(
@@ -60,8 +33,17 @@ namespace Dizzy.Nudge.Patches
                 new[] { typeof(GoPointerButton) },
                 typeof(LookUIPatches),
                 nameof(LookUIPatches.ShowLookTextPostfix),
-                Priority.Last,
-                new[] { "DogEggz.unlimitedhammer" });
+                Priority.First,
+                after: new[] { "com.nandbrew.furniturefix" });
+
+            TryPostfix(
+                harmony,
+                typeof(LookUI),
+                "SetAltIcons",
+                new[] { typeof(bool) },
+                typeof(LookUIPatches),
+                nameof(LookUIPatches.SetAltIconsPostfix),
+                Priority.First);
         }
 
         private static void TryPrefix(

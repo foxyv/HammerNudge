@@ -8,6 +8,7 @@ namespace Dizzy.Nudge
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
     [BepInProcess("Sailwind.exe")]
     [BepInDependency("DogEggz.unlimitedhammer", BepInDependency.DependencyFlags.SoftDependency)]
+    [BepInDependency("com.nandbrew.furniturefix", BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
     {
         public const string PluginGuid = "com.dizzy.sailwind.nudge";
