@@ -8,37 +8,14 @@ namespace Dizzy.Nudge.Patches
     {
         internal static void Apply(Harmony harmony)
         {
-            TryPostfix(
-                harmony,
-                typeof(GoPointer),
-                nameof(GoPointer.MainButtonDown),
-                Type.EmptyTypes,
-                typeof(HammerNudgePatches),
-                nameof(HammerNudgePatches.MainButtonDownPostfix));
-
             TryPrefix(
                 harmony,
                 typeof(ShipItemHammer),
                 nameof(ShipItemHammer.OnAltActivate),
                 Type.EmptyTypes,
                 typeof(HammerNudgePatches),
-                nameof(HammerNudgePatches.OnAltActivatePrefix));
-
-            TryPrefix(
-                harmony,
-                typeof(GoPointerButton),
-                nameof(GoPointerButton.OnActivate),
-                Type.EmptyTypes,
-                typeof(HammerNudgePatches),
-                nameof(HammerNudgePatches.OnActivatePrefix));
-
-            TryPrefix(
-                harmony,
-                typeof(GoPointerButton),
-                nameof(GoPointerButton.OnActivate),
-                new[] { typeof(GoPointer) },
-                typeof(HammerNudgePatches),
-                nameof(HammerNudgePatches.OnActivatePointerPrefix));
+                nameof(HammerNudgePatches.OnAltActivatePrefix),
+                Priority.First);
 
             TryPrefix(
                 harmony,
@@ -46,7 +23,8 @@ namespace Dizzy.Nudge.Patches
                 nameof(ShipItem.OnItemClick),
                 new[] { typeof(PickupableItem) },
                 typeof(HammerNudgePatches),
-                nameof(HammerNudgePatches.OnItemClickPrefix));
+                nameof(HammerNudgePatches.OnItemClickPrefix),
+                Priority.First);
 
             TryPostfix(
                 harmony,
@@ -54,7 +32,18 @@ namespace Dizzy.Nudge.Patches
                 nameof(LookUI.ShowLookText),
                 new[] { typeof(GoPointerButton) },
                 typeof(LookUIPatches),
-                nameof(LookUIPatches.ShowLookTextPostfix));
+                nameof(LookUIPatches.ShowLookTextPostfix),
+                Priority.First,
+                after: new[] { "com.nandbrew.furniturefix" });
+
+            TryPostfix(
+                harmony,
+                typeof(LookUI),
+                "SetAltIcons",
+                new[] { typeof(bool) },
+                typeof(LookUIPatches),
+                nameof(LookUIPatches.SetAltIconsPostfix),
+                Priority.First);
         }
 
         private static void TryPrefix(
@@ -63,7 +52,8 @@ namespace Dizzy.Nudge.Patches
             string methodName,
             Type[] parameters,
             Type patchType,
-            string patchMethod)
+            string patchMethod,
+            int priority = Priority.Normal)
         {
             MethodInfo original = AccessTools.DeclaredMethod(target, methodName, parameters);
             MethodInfo prefix = AccessTools.DeclaredMethod(patchType, patchMethod);
@@ -75,7 +65,8 @@ namespace Dizzy.Nudge.Patches
 
             try
             {
-                harmony.Patch(original, prefix: new HarmonyMethod(prefix));
+                var method = new HarmonyMethod(prefix) { priority = priority };
+                harmony.Patch(original, prefix: method);
             }
             catch (Exception e)
             {
@@ -89,7 +80,9 @@ namespace Dizzy.Nudge.Patches
             string methodName,
             Type[] parameters,
             Type patchType,
-            string patchMethod)
+            string patchMethod,
+            int priority = Priority.Normal,
+            string[] after = null)
         {
             MethodInfo original = AccessTools.DeclaredMethod(target, methodName, parameters);
             MethodInfo postfix = AccessTools.DeclaredMethod(patchType, patchMethod);
@@ -101,7 +94,10 @@ namespace Dizzy.Nudge.Patches
 
             try
             {
-                harmony.Patch(original, postfix: new HarmonyMethod(postfix));
+                var method = new HarmonyMethod(postfix) { priority = priority };
+                if (after != null && after.Length > 0)
+                    method.after = after;
+                harmony.Patch(original, postfix: method);
             }
             catch (Exception e)
             {

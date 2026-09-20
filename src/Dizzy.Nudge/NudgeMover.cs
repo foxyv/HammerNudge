@@ -31,10 +31,10 @@ namespace Dizzy.Nudge
 
         internal static bool IsNudgeTarget(ShipItem item)
         {
-            if (item == null || !item.sold || !item.nailed)
-                return false;
-
-            return ShipItemHammer.CanNail(item);
+            // Do not call ShipItemHammer.CanNail: other hammer mods postfix it, and
+            // an exception there would abort our click postfix and break the hammer.
+            // Locked (nailed) beds can be nudged; unlocked beds stay vanilla pickup.
+            return item != null && item.sold && item.nailed;
         }
 
         internal static bool HoldingHammer(GoPointer pointer)
@@ -54,25 +54,16 @@ namespace Dizzy.Nudge
             return Traverse.Create(button).Field("pointedAtBy").GetValue<GoPointer>();
         }
 
-        internal static bool ShouldInterceptLeftClick(GoPointerButton button)
-        {
-            if (GetHeldAxis() == NudgeAxis.None)
-                return false;
-
-            ShipItem item = button != null ? button.GetComponent<ShipItem>() : null;
-            if (!IsNudgeTarget(item))
-                return false;
-
-            GoPointer pointer = GetLookingPointer(button);
-            return HoldingHammer(pointer);
-        }
-
         internal static bool TryNudgeFromLeftClick(GoPointerButton button, GoPointer pointer)
         {
+            // Empty hands must always fall through to vanilla pickup (beds, crates, etc.).
             if (!HoldingHammer(pointer))
                 return false;
 
             ShipItem item = button != null ? button.GetComponent<ShipItem>() : null;
+            if (item == null || !item.nailed)
+                return false;
+
             return TryNudge(item, pointer, rightClick: false);
         }
 
@@ -115,6 +106,20 @@ namespace Dizzy.Nudge
                 default:
                     return null;
             }
+        }
+
+        internal static string GetIdleControls()
+        {
+            return KeyLabel(NudgeConfig.AwayKey) + "/"
+                + KeyLabel(NudgeConfig.VerticalKey) + "/"
+                + KeyLabel(NudgeConfig.StrafeKey) + " nudge\nunlock";
+        }
+
+        private static string KeyLabel(ConfigEntry<KeyboardShortcut> entry)
+        {
+            if (entry == null || entry.Value.MainKey == KeyCode.None)
+                return "?";
+            return entry.Value.MainKey.ToString();
         }
 
         private static Transform LookTransform(GoPointer pointer)

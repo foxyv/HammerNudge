@@ -24,6 +24,8 @@ Hold **Shift** for a finer step. Axes follow your look, flattened to the deck wh
 
 Config: `BepInEx\config\com.dizzy.sailwind.nudge.cfg`
 
+Works alongside [UnlimitedHammer](https://thunderstore.io/c/sailwind/p/DogEggz/UnlimitedHammer/) (nail-anything). Nudge only steals a click when Q/T/E is held on an already locked item; a fault in another hammer patch will not take down vanilla lock/unlock.
+
 ## Install
 
 Requires Sailwind + [BepInEx 5](https://thunderstore.io/c/sailwind/p/BepInEx/BepInExPack/) (Thunderstore BepInExPack recommended). Extract `Dizzy.Nudge` into `BepInEx\plugins\`. Restart Sailwind and check `BepInEx\LogOutput.log`.
