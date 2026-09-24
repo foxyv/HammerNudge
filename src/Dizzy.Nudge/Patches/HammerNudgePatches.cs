@@ -20,16 +20,20 @@ namespace Dizzy.Nudge.Patches
 
         // Left-click nudge runs only while a hammer is already held. Empty-handed
         // pickup (beds, crates, bottles) never calls OnItemClick, so it stays vanilla.
+        // Consume the click whenever Q/T/E is held on a locked item so lamp hooks
+        // (which override OnItemClick) cannot hang the hammer instead of nudging.
         internal static bool OnItemClickPrefix(ShipItem __instance, PickupableItem heldItem, ref bool __result)
         {
             try
             {
                 if (heldItem == null || heldItem.GetComponent<ShipItemHammer>() == null)
                     return true;
-
-                if (!NudgeMover.TryNudgeFromLeftClick(__instance, heldItem.held))
+                if (NudgeMover.GetHeldAxis() == NudgeAxis.None)
+                    return true;
+                if (__instance == null || !__instance.nailed)
                     return true;
 
+                NudgeMover.TryNudgeFromLeftClick(__instance, heldItem.held);
                 __result = false;
                 return false;
             }

@@ -26,6 +26,17 @@ namespace Dizzy.Nudge.Patches
                 nameof(HammerNudgePatches.OnItemClickPrefix),
                 Priority.First);
 
+            // LampHook.OnItemClick overrides ShipItem and hangs HangableItems (the
+            // hammer). Harmony does not run the base prefix on that override.
+            TryPrefix(
+                harmony,
+                typeof(ShipItemLampHook),
+                nameof(ShipItemLampHook.OnItemClick),
+                new[] { typeof(PickupableItem) },
+                typeof(HammerNudgePatches),
+                nameof(HammerNudgePatches.OnItemClickPrefix),
+                Priority.First);
+
             TryPostfix(
                 harmony,
                 typeof(LookUI),
