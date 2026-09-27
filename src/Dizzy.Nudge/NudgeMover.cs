@@ -29,12 +29,28 @@ namespace Dizzy.Nudge
             return NudgeAxis.None;
         }
 
+        internal static bool IsRotateHeld()
+        {
+            if (NudgeConfig.RotateModifier == null)
+                return false;
+            return IsModifierHeld(NudgeConfig.RotateModifier.Value);
+        }
+
         internal static bool IsNudgeTarget(ShipItem item)
         {
             // Do not call ShipItemHammer.CanNail: other hammer mods postfix it, and
             // an exception there would abort our click postfix and break the hammer.
             // Locked (nailed) beds can be nudged; unlocked beds stay vanilla pickup.
             return item != null && item.sold && item.nailed;
+        }
+
+        internal static bool ShouldKeepHammer(GoPointer pointer)
+        {
+            if (NudgeConfig.Enabled == null || !NudgeConfig.Enabled.Value)
+                return false;
+            if (GetHeldAxis() == NudgeAxis.None)
+                return false;
+            return HoldingHammer(pointer);
         }
 
         internal static bool HoldingHammer(GoPointer pointer)
@@ -82,19 +98,83 @@ namespace Dizzy.Nudge
                 return false;
 
             Transform look = LookTransform(pointer);
-            Vector3 delta = ComputeDelta(item, look, axis, rightClick);
-            if (delta.sqrMagnitude < 1e-12f)
+            if (look == null)
                 return false;
 
-            if (!Apply(item, delta))
+            Vector3 up;
+            Vector3 away;
+            Vector3 right;
+            if (!TryDeckAxes(item, look, out up, out away, out right))
                 return false;
+
+            if (IsRotateHeld())
+            {
+                if (!TryRotate(item, axis, rightClick, up, away, right))
+                    return false;
+            }
+            else
+            {
+                Vector3 delta = ComputeDelta(axis, rightClick, up, away, right);
+                if (delta.sqrMagnitude < 1e-12f)
+                    return false;
+                item.transform.position += delta;
+                if (!SyncTwin(item))
+                    return false;
+            }
 
             PlayTap();
             return true;
         }
 
+        internal static bool WasLevelPressed()
+        {
+            if (NudgeConfig.Enabled == null || !NudgeConfig.Enabled.Value)
+                return false;
+            if (NudgeConfig.LevelKey == null)
+                return false;
+            return KeyWentDown(NudgeConfig.LevelKey.Value.MainKey);
+        }
+
+        internal static bool TryLevelFromLook()
+        {
+            GoPointer[] pointers = Object.FindObjectsOfType<GoPointer>();
+            for (int i = 0; i < pointers.Length; i++)
+            {
+                GoPointer pointer = pointers[i];
+                if (!HoldingHammer(pointer))
+                    continue;
+
+                ShipItem item = pointer.GetPointedAtItem();
+                if (!IsNudgeTarget(item))
+                    continue;
+
+                if (TryLevel(item))
+                    return true;
+            }
+
+            return false;
+        }
+
         internal static string GetPrompt(NudgeAxis axis)
         {
+            if (IsRotateHeld())
+            {
+                switch (axis)
+                {
+                    case NudgeAxis.Away:
+                        return "tilt away\ntilt closer";
+                    case NudgeAxis.Vertical:
+                        return "roll left\nroll right";
+                    case NudgeAxis.Strafe:
+                        return "turn left\nturn right";
+                    default:
+                        return KeyLabel(NudgeConfig.RotateModifier) + "+"
+                            + KeyLabel(NudgeConfig.AwayKey) + "/"
+                            + KeyLabel(NudgeConfig.VerticalKey) + "/"
+                            + KeyLabel(NudgeConfig.StrafeKey) + " rotate\nunlock";
+                }
+            }
+
             switch (axis)
             {
                 case NudgeAxis.Away:
@@ -112,14 +192,22 @@ namespace Dizzy.Nudge
         {
             return KeyLabel(NudgeConfig.AwayKey) + "/"
                 + KeyLabel(NudgeConfig.VerticalKey) + "/"
-                + KeyLabel(NudgeConfig.StrafeKey) + " nudge\nunlock";
+                + KeyLabel(NudgeConfig.StrafeKey) + " nudge  "
+                + KeyLabel(NudgeConfig.LevelKey) + " level\nunlock";
         }
 
         private static string KeyLabel(ConfigEntry<KeyboardShortcut> entry)
         {
             if (entry == null || entry.Value.MainKey == KeyCode.None)
                 return "?";
-            return entry.Value.MainKey.ToString();
+            KeyCode key = entry.Value.MainKey;
+            if (key == KeyCode.LeftAlt || key == KeyCode.RightAlt)
+                return "Alt";
+            if (key == KeyCode.LeftShift || key == KeyCode.RightShift)
+                return "Shift";
+            if (key == KeyCode.LeftControl || key == KeyCode.RightControl)
+                return "Ctrl";
+            return key.ToString();
         }
 
         private static Transform LookTransform(GoPointer pointer)
@@ -129,25 +217,43 @@ namespace Dizzy.Nudge
             return pointer != null ? pointer.transform : null;
         }
 
-        private static Vector3 ComputeDelta(ShipItem item, Transform look, NudgeAxis axis, bool rightClick)
+        private static bool TryDeckAxes(
+            ShipItem item,
+            Transform look,
+            out Vector3 up,
+            out Vector3 away,
+            out Vector3 right)
         {
-            if (look == null)
-                return Vector3.zero;
-
-            Vector3 up = DeckUp(item);
-            Vector3 away = Vector3.ProjectOnPlane(look.forward, up);
+            up = DeckUp(item);
+            away = Vector3.ProjectOnPlane(look.forward, up);
             if (away.sqrMagnitude < 0.0001f)
                 away = Vector3.Cross(up, look.right);
-            away.Normalize();
+            if (away.sqrMagnitude < 0.0001f)
+            {
+                right = Vector3.zero;
+                return false;
+            }
 
-            Vector3 right = Vector3.Cross(up, away);
+            away.Normalize();
+            right = Vector3.Cross(up, away);
             if (right.sqrMagnitude < 0.0001f)
                 right = Vector3.ProjectOnPlane(look.right, up);
-            right.Normalize();
+            if (right.sqrMagnitude < 0.0001f)
+                return false;
 
+            right.Normalize();
             up = Vector3.Cross(away, right);
             up.Normalize();
+            return true;
+        }
 
+        private static Vector3 ComputeDelta(
+            NudgeAxis axis,
+            bool rightClick,
+            Vector3 up,
+            Vector3 away,
+            Vector3 right)
+        {
             Vector3 dir;
             switch (axis)
             {
@@ -164,7 +270,97 @@ namespace Dizzy.Nudge
                     return Vector3.zero;
             }
 
-            return dir * GetStep();
+            return dir * GetMoveStep();
+        }
+
+        private static bool TryRotate(
+            ShipItem item,
+            NudgeAxis axis,
+            bool rightClick,
+            Vector3 up,
+            Vector3 away,
+            Vector3 right)
+        {
+            Vector3 pivot;
+            switch (axis)
+            {
+                case NudgeAxis.Away:
+                    pivot = right;
+                    break;
+                case NudgeAxis.Vertical:
+                    pivot = -away;
+                    break;
+                case NudgeAxis.Strafe:
+                    pivot = up;
+                    break;
+                default:
+                    return false;
+            }
+
+            float angle = GetRotateStep();
+            if (rightClick)
+                angle = -angle;
+
+            item.transform.rotation = Quaternion.AngleAxis(angle, pivot) * item.transform.rotation;
+            return SyncTwin(item);
+        }
+
+        private static bool TryLevel(ShipItem item)
+        {
+            Vector3 up = DeckUp(item);
+            Vector3 from = ClosestLocalAxis(item.transform, up);
+            Quaternion flatten = Quaternion.FromToRotation(from, up);
+            if (flatten == Quaternion.identity)
+            {
+                PlayTap();
+                return true;
+            }
+
+            // Rotate in place, then keep the collider's underside at the same
+            // deck height so a barrel does not hop when its mesh origin is low.
+            float before = ContactHeight(item, up);
+            item.transform.rotation = flatten * item.transform.rotation;
+            float after = ContactHeight(item, up);
+            item.transform.position += up * (before - after);
+
+            if (!SyncTwin(item))
+                return false;
+
+            PlayTap();
+            return true;
+        }
+
+        // Furniture meshes do not all use local Y as visual up. Align whichever
+        // local axis is already closest to deck-up so Level does not yaw a rack
+        // onto its side.
+        private static Vector3 ClosestLocalAxis(Transform t, Vector3 deckUp)
+        {
+            Vector3[] axes =
+            {
+                t.up, -t.up, t.forward, -t.forward, t.right, -t.right
+            };
+            Vector3 best = t.up;
+            float bestDot = float.NegativeInfinity;
+            for (int i = 0; i < axes.Length; i++)
+            {
+                float d = Vector3.Dot(axes[i], deckUp);
+                if (d > bestDot)
+                {
+                    bestDot = d;
+                    best = axes[i];
+                }
+            }
+
+            return best;
+        }
+
+        private static float ContactHeight(ShipItem item, Vector3 up)
+        {
+            Collider col = item.GetComponent<Collider>();
+            Vector3 point = item.transform.position;
+            if (col != null)
+                point = col.ClosestPoint(item.transform.position - up * 20f);
+            return Vector3.Dot(point, up);
         }
 
         private static Vector3 DeckUp(ShipItem item)
@@ -175,14 +371,21 @@ namespace Dizzy.Nudge
             return Vector3.up;
         }
 
-        private static float GetStep()
+        private static float GetMoveStep()
         {
             if (IsFinePressed())
                 return NudgeConfig.FineStepMeters.Value;
             return NudgeConfig.StepMeters.Value;
         }
 
-        private static bool Apply(ShipItem item, Vector3 delta)
+        private static float GetRotateStep()
+        {
+            if (IsFinePressed())
+                return NudgeConfig.FineStepDegrees.Value;
+            return NudgeConfig.StepDegrees.Value;
+        }
+
+        private static bool SyncTwin(ShipItem item)
         {
             ItemRigidbody twin = item.GetItemRigidbody();
             if (twin == null)
@@ -195,8 +398,6 @@ namespace Dizzy.Nudge
             // walk collider. Those transforms often do not share world axes, so a world
             // delta on the twin is remapped diagonally onto the mesh. Move the visual,
             // then copy into the twin with the same local-space mapping the game uses.
-            item.transform.position += delta;
-
             Transform boat = item.currentActualBoat;
             Transform walk = item.currentWalkCol;
             if (boat != null && walk != null)
@@ -208,7 +409,8 @@ namespace Dizzy.Nudge
             }
             else
             {
-                twin.transform.position += delta;
+                twin.transform.position = item.transform.position;
+                twin.transform.rotation = item.transform.rotation;
             }
 
             return true;
@@ -241,6 +443,13 @@ namespace Dizzy.Nudge
             return true;
         }
 
+        private static bool IsModifierHeld(KeyboardShortcut shortcut)
+        {
+            if (shortcut.MainKey == KeyCode.None)
+                return false;
+            return KeyIsDown(shortcut.MainKey);
+        }
+
         private static bool IsFinePressed()
         {
             return KeyIsDown(NudgeConfig.FineModifier.Value.MainKey);
@@ -258,6 +467,20 @@ namespace Dizzy.Nudge
                 return Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt);
 
             return Input.GetKey(key);
+        }
+
+        private static bool KeyWentDown(KeyCode key)
+        {
+            if (key == KeyCode.None)
+                return false;
+            if (key == KeyCode.LeftShift || key == KeyCode.RightShift)
+                return Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(KeyCode.RightShift);
+            if (key == KeyCode.LeftControl || key == KeyCode.RightControl)
+                return Input.GetKeyDown(KeyCode.LeftControl) || Input.GetKeyDown(KeyCode.RightControl);
+            if (key == KeyCode.LeftAlt || key == KeyCode.RightAlt)
+                return Input.GetKeyDown(KeyCode.LeftAlt) || Input.GetKeyDown(KeyCode.RightAlt);
+
+            return Input.GetKeyDown(key);
         }
     }
 }

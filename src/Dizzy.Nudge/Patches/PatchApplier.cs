@@ -17,24 +17,35 @@ namespace Dizzy.Nudge.Patches
                 nameof(HammerNudgePatches.OnAltActivatePrefix),
                 Priority.First);
 
+            // Subclasses (bottles/barrels, lamp hooks, lights, …) override
+            // OnItemClick; Harmony does not run the ShipItem prefix on those.
+            PatchDeclaredOnItemClicks(harmony);
+
+            TryPrefix(
+                harmony,
+                typeof(GoPointer),
+                nameof(GoPointer.DropItem),
+                Type.EmptyTypes,
+                typeof(HammerNudgePatches),
+                nameof(HammerNudgePatches.DropItemPrefix),
+                Priority.First);
+
             TryPrefix(
                 harmony,
                 typeof(ShipItem),
-                nameof(ShipItem.OnItemClick),
-                new[] { typeof(PickupableItem) },
+                nameof(ShipItem.OnDrop),
+                Type.EmptyTypes,
                 typeof(HammerNudgePatches),
-                nameof(HammerNudgePatches.OnItemClickPrefix),
+                nameof(HammerNudgePatches.OnDropPrefix),
                 Priority.First);
 
-            // LampHook.OnItemClick overrides ShipItem and hangs HangableItems (the
-            // hammer). Harmony does not run the base prefix on that override.
             TryPrefix(
                 harmony,
-                typeof(ShipItemLampHook),
-                nameof(ShipItemLampHook.OnItemClick),
-                new[] { typeof(PickupableItem) },
+                typeof(GoPointer),
+                "LateUpdate",
+                Type.EmptyTypes,
                 typeof(HammerNudgePatches),
-                nameof(HammerNudgePatches.OnItemClickPrefix),
+                nameof(HammerNudgePatches.LateUpdatePrefix),
                 Priority.First);
 
             TryPostfix(
@@ -55,6 +66,47 @@ namespace Dizzy.Nudge.Patches
                 typeof(LookUIPatches),
                 nameof(LookUIPatches.SetAltIconsPostfix),
                 Priority.First);
+        }
+
+        private static void PatchDeclaredOnItemClicks(Harmony harmony)
+        {
+            Type[] types;
+            try
+            {
+                types = AccessTools.GetTypesFromAssembly(typeof(ShipItem).Assembly);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("Nudge: could not scan ShipItem click overrides: " + e.Message);
+                TryPrefix(
+                    harmony,
+                    typeof(ShipItem),
+                    nameof(ShipItem.OnItemClick),
+                    new[] { typeof(PickupableItem) },
+                    typeof(HammerNudgePatches),
+                    nameof(HammerNudgePatches.OnItemClickPrefix),
+                    Priority.First);
+                return;
+            }
+
+            Type[] clickArgs = { typeof(PickupableItem) };
+            for (int i = 0; i < types.Length; i++)
+            {
+                Type type = types[i];
+                if (type == null || !typeof(ShipItem).IsAssignableFrom(type))
+                    continue;
+                if (AccessTools.DeclaredMethod(type, "OnItemClick", clickArgs) == null)
+                    continue;
+
+                TryPrefix(
+                    harmony,
+                    type,
+                    "OnItemClick",
+                    clickArgs,
+                    typeof(HammerNudgePatches),
+                    nameof(HammerNudgePatches.OnItemClickPrefix),
+                    Priority.First);
+            }
         }
 
         private static void TryPrefix(

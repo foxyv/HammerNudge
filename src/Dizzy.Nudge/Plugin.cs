@@ -1,3 +1,4 @@
+using System;
 using BepInEx;
 using BepInEx.Logging;
 using Dizzy.Nudge.Patches;
@@ -13,7 +14,7 @@ namespace Dizzy.Nudge
     {
         public const string PluginGuid = "com.dizzy.sailwind.nudge";
         public const string PluginName = "Dizzy Nudge";
-        public const string PluginVersion = "0.1.2";
+        public const string PluginVersion = "0.1.3";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;
@@ -31,6 +32,25 @@ namespace Dizzy.Nudge
             PatchApplier.Apply(_harmony);
 
             Log.LogInfo($"{PluginName} v{PluginVersion} loaded (Enabled={NudgeConfig.Enabled.Value}, StepMeters={NudgeConfig.StepMeters.Value}).");
+        }
+
+        private void Update()
+        {
+            try
+            {
+                if (NudgeConfig.Enabled == null || !NudgeConfig.Enabled.Value)
+                    return;
+                if (!GameState.playing || GameState.inCursorMenu)
+                    return;
+                if (!NudgeMover.WasLevelPressed())
+                    return;
+
+                NudgeMover.TryLevelFromLook();
+            }
+            catch (Exception e)
+            {
+                Log.LogWarning("Nudge level failed: " + e.Message);
+            }
         }
 
         private void OnDestroy()
