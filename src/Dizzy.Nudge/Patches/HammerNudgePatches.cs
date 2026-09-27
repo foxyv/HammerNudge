@@ -9,7 +9,11 @@ namespace Dizzy.Nudge.Patches
         {
             try
             {
-                return !NudgeMover.TryNudgeFromRightClick(__instance);
+                if (NudgeMover.TryNudgeFromRightClick(__instance))
+                    return false;
+                if (NudgeMover.TryUnlockNailed(__instance))
+                    return false;
+                return true;
             }
             catch (Exception e)
             {
