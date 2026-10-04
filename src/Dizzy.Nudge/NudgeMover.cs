@@ -44,6 +44,15 @@ namespace Dizzy.Nudge
             return item != null && item.sold && item.nailed;
         }
 
+        // A left click with the hammer while Q/T/E is held is a nudge: never a
+        // hang, drop, or any other item-on-item click.
+        internal static bool IsNudgeClick(PickupableItem heldItem)
+        {
+            return heldItem != null
+                && heldItem.GetComponent<ShipItemHammer>() != null
+                && GetHeldAxis() != NudgeAxis.None;
+        }
+
         internal static bool ShouldKeepHammer(GoPointer pointer)
         {
             if (NudgeConfig.Enabled == null || !NudgeConfig.Enabled.Value)

@@ -1,11 +1,15 @@
 using System;
 using System.Reflection;
+using BepInEx.Bootstrap;
 using HarmonyLib;
 
 namespace Dizzy.Nudge.Patches
 {
     internal static class PatchApplier
     {
+        internal const string HooksHangMoreGuid = "com.raddude.hookshangmore";
+        private const string HooksHangMoreLampHookPatches = "HooksHangMore.AttachablePatches+ShipItemLampHookPatches";
+
         internal static void Apply(Harmony harmony)
         {
             TryPrefix(
@@ -20,6 +24,7 @@ namespace Dizzy.Nudge.Patches
             // Subclasses (bottles/barrels, lamp hooks, lights, …) override
             // OnItemClick; Harmony does not run the ShipItem prefix on those.
             PatchDeclaredOnItemClicks(harmony);
+            PatchHooksHangMoreLampHook(harmony);
 
             TryPrefix(
                 harmony,
@@ -107,6 +112,31 @@ namespace Dizzy.Nudge.Patches
                     nameof(HammerNudgePatches.OnItemClickPrefix),
                     Priority.First);
             }
+        }
+
+        // Patches HooksHangMore's own lamp-hook click prefix (see
+        // HammerNudgePatches.HooksHangMoreLampHookClickPrefix). The soft dependency
+        // in Plugin loads HooksHangMore first, so its types resolve here.
+        private static void PatchHooksHangMoreLampHook(Harmony harmony)
+        {
+            if (!Chainloader.PluginInfos.ContainsKey(HooksHangMoreGuid))
+                return;
+
+            Type patches = AccessTools.TypeByName(HooksHangMoreLampHookPatches);
+            if (patches == null)
+            {
+                Plugin.Log.LogWarning("Nudge: HooksHangMore lamp-hook patch not found; a nudge click may still hang the hammer.");
+                return;
+            }
+
+            TryPrefix(
+                harmony,
+                patches,
+                "OnItemClick",
+                null,
+                typeof(HammerNudgePatches),
+                nameof(HammerNudgePatches.HooksHangMoreLampHookClickPrefix),
+                Priority.First);
         }
 
         private static void TryPrefix(
