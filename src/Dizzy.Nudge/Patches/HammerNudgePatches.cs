@@ -30,9 +30,7 @@ namespace Dizzy.Nudge.Patches
         {
             try
             {
-                if (heldItem == null || heldItem.GetComponent<ShipItemHammer>() == null)
-                    return true;
-                if (NudgeMover.GetHeldAxis() == NudgeAxis.None)
+                if (!NudgeMover.IsNudgeClick(heldItem))
                     return true;
 
                 NudgeMover.TryNudgeFromLeftClick(__instance, heldItem.held);
@@ -42,6 +40,23 @@ namespace Dizzy.Nudge.Patches
             catch (Exception e)
             {
                 Plugin.Log.LogWarning("Nudge OnItemClick failed: " + e.Message);
+                return true;
+            }
+        }
+
+        // HooksHangMore hangs the held item from its own ShipItemLampHook.OnItemClick
+        // prefix, and HarmonyX still runs it after ours returns false. A nudge click
+        // then recorded the hammer as hanging on the hook, and the hook refused lamps
+        // until the hammer was picked up again. Skip that prefix for nudge clicks.
+        internal static bool HooksHangMoreLampHookClickPrefix(PickupableItem heldItem)
+        {
+            try
+            {
+                return !NudgeMover.IsNudgeClick(heldItem);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("Nudge HooksHangMore skip failed: " + e.Message);
                 return true;
             }
         }
