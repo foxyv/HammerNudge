@@ -53,6 +53,16 @@ namespace Dizzy.Nudge
                 && GetHeldAxis() != NudgeAxis.None;
         }
 
+        // True when this pointer's right click would rotate a locked item: hammer
+        // in hand, RotateModifier and Q/T/E held, looking at a nudge target.
+        internal static bool IsRotateNudge(GoPointer pointer)
+        {
+            return GetHeldAxis() != NudgeAxis.None
+                && IsRotateHeld()
+                && HoldingHammer(pointer)
+                && IsNudgeTarget(pointer.GetPointedAtItem());
+        }
+
         internal static bool ShouldKeepHammer(GoPointer pointer)
         {
             if (NudgeConfig.Enabled == null || !NudgeConfig.Enabled.Value)

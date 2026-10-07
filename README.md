@@ -27,7 +27,7 @@ Press **G** (no click) to level the item flat on the deck, keeping its heading. 
 
 Config: `BepInEx\config\com.dizzy.sailwind.nudge.cfg`
 
-Works alongside [UnlimitedHammer](https://thunderstore.io/c/sailwind/p/DogEggz/UnlimitedHammer/) (nail-anything). Nudge only steals a click when Q/T/E is held on an already locked item; a fault in another hammer patch will not take down vanilla lock/unlock. Furniture Fix still uses Alt for empty-hand furniture pickup. With HooksHangMore, a nudge click on a lamp hook never hangs the hammer there, so the hook stays free for lamps.
+Works alongside [UnlimitedHammer](https://thunderstore.io/c/sailwind/p/DogEggz/UnlimitedHammer/) (nail-anything). Nudge only steals a click when Q/T/E is held on an already locked item; a fault in another hammer patch will not take down vanilla lock/unlock. Furniture Fix still uses Alt for empty-hand furniture pickup. With HooksHangMore, a nudge click on a lamp hook never hangs the hammer there, so the hook stays free for lamps. With Deft Hands, which also uses Alt, Alt+Q/T/E right-click still rotates; Deft Hands still freezes the camera and turns the hammer in hand while Alt is held.
 
 ## Install
 

@@ -8,6 +8,7 @@ namespace Dizzy.Nudge.Patches
     internal static class PatchApplier
     {
         internal const string HooksHangMoreGuid = "com.raddude.hookshangmore";
+        private const string DeftHandsGuid = "com.keevi.defthands";
         private const string HooksHangMoreLampHookPatches = "HooksHangMore.AttachablePatches+ShipItemLampHookPatches";
 
         internal static void Apply(Harmony harmony)
@@ -71,6 +72,28 @@ namespace Dizzy.Nudge.Patches
                 typeof(LookUIPatches),
                 nameof(LookUIPatches.SetAltIconsPostfix),
                 Priority.First);
+
+            // Deft Hands filters right click while Alt is held (see
+            // HammerNudgePatches.AltButtonDownRestorePostfix). Bracket its postfix.
+            TryPostfix(
+                harmony,
+                typeof(GoPointer),
+                nameof(GoPointer.AltButtonDown),
+                Type.EmptyTypes,
+                typeof(HammerNudgePatches),
+                nameof(HammerNudgePatches.AltButtonDownCapturePostfix),
+                Priority.First,
+                before: new[] { DeftHandsGuid });
+
+            TryPostfix(
+                harmony,
+                typeof(GoPointer),
+                nameof(GoPointer.AltButtonDown),
+                Type.EmptyTypes,
+                typeof(HammerNudgePatches),
+                nameof(HammerNudgePatches.AltButtonDownRestorePostfix),
+                Priority.Last,
+                after: new[] { DeftHandsGuid });
         }
 
         private static void PatchDeclaredOnItemClicks(Harmony harmony)
@@ -175,7 +198,8 @@ namespace Dizzy.Nudge.Patches
             Type patchType,
             string patchMethod,
             int priority = Priority.Normal,
-            string[] after = null)
+            string[] after = null,
+            string[] before = null)
         {
             MethodInfo original = AccessTools.DeclaredMethod(target, methodName, parameters);
             MethodInfo postfix = AccessTools.DeclaredMethod(patchType, patchMethod);
@@ -190,6 +214,8 @@ namespace Dizzy.Nudge.Patches
                 var method = new HarmonyMethod(postfix) { priority = priority };
                 if (after != null && after.Length > 0)
                     method.after = after;
+                if (before != null && before.Length > 0)
+                    method.before = before;
                 harmony.Patch(original, postfix: method);
             }
             catch (Exception e)
