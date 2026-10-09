@@ -5,6 +5,33 @@ namespace Dizzy.Nudge.Patches
 {
     internal static class HammerNudgePatches
     {
+        private static bool _rawAltButtonDown;
+
+        // Deft Hands reports right click as not pressed while its rotation key
+        // (Left Alt by default) is held with an item in hand, so Alt+Q/T/E
+        // right-click rotate never reached the hammer. Capture the game's answer
+        // before that filter runs, then restore it afterwards for nudge rotates.
+        internal static void AltButtonDownCapturePostfix(bool __result)
+        {
+            _rawAltButtonDown = __result;
+        }
+
+        internal static void AltButtonDownRestorePostfix(GoPointer __instance, ref bool __result)
+        {
+            if (__result || !_rawAltButtonDown || GameState.inCursorMenu)
+                return;
+
+            try
+            {
+                if (NudgeMover.IsRotateNudge(__instance))
+                    __result = true;
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("Nudge right-click rotate failed: " + e.Message);
+            }
+        }
+
         internal static bool OnAltActivatePrefix(ShipItemHammer __instance)
         {
             try

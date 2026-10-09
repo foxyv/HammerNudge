@@ -53,13 +53,33 @@ namespace Dizzy.Nudge
                 && GetHeldAxis() != NudgeAxis.None;
         }
 
+        // True when this pointer's right click would rotate a locked item: hammer
+        // in hand, RotateModifier and Q/T/E held, looking at a nudge target.
+        internal static bool IsRotateNudge(GoPointer pointer)
+        {
+            return GetHeldAxis() != NudgeAxis.None
+                && IsRotateHeld()
+                && HoldingHammer(pointer)
+                && IsNudgeTarget(pointer.GetPointedAtItem());
+        }
+
         internal static bool ShouldKeepHammer(GoPointer pointer)
         {
             if (NudgeConfig.Enabled == null || !NudgeConfig.Enabled.Value)
                 return false;
-            if (GetHeldAxis() == NudgeAxis.None)
+            if (GetHeldAxis() == NudgeAxis.None && !WasAxisReleased())
                 return false;
             return HoldingHammer(pointer);
+        }
+
+        // T is also vanilla Throw: releasing it drops the held item when the look
+        // ray is empty (often right after a T nudge moves the item off it), on the
+        // same frame GetHeldAxis() already reads None.
+        private static bool WasAxisReleased()
+        {
+            return KeyWentUp(NudgeConfig.AwayKey.Value.MainKey)
+                || KeyWentUp(NudgeConfig.VerticalKey.Value.MainKey)
+                || KeyWentUp(NudgeConfig.StrafeKey.Value.MainKey);
         }
 
         internal static bool HoldingHammer(GoPointer pointer)
@@ -512,6 +532,20 @@ namespace Dizzy.Nudge
                 return Input.GetKeyDown(KeyCode.LeftAlt) || Input.GetKeyDown(KeyCode.RightAlt);
 
             return Input.GetKeyDown(key);
+        }
+
+        private static bool KeyWentUp(KeyCode key)
+        {
+            if (key == KeyCode.None)
+                return false;
+            if (key == KeyCode.LeftShift || key == KeyCode.RightShift)
+                return Input.GetKeyUp(KeyCode.LeftShift) || Input.GetKeyUp(KeyCode.RightShift);
+            if (key == KeyCode.LeftControl || key == KeyCode.RightControl)
+                return Input.GetKeyUp(KeyCode.LeftControl) || Input.GetKeyUp(KeyCode.RightControl);
+            if (key == KeyCode.LeftAlt || key == KeyCode.RightAlt)
+                return Input.GetKeyUp(KeyCode.LeftAlt) || Input.GetKeyUp(KeyCode.RightAlt);
+
+            return Input.GetKeyUp(key);
         }
     }
 }
