@@ -2,7 +2,7 @@
 # Usage: .\scripts\package-release.ps1 [-Version 0.1.0]
 
 param(
-    [string]$Version = "0.1.5"
+    [string]$Version = "0.1.6"
 )
 
 $ErrorActionPreference = "Stop"
