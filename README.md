@@ -23,7 +23,7 @@ Lock the item with the hammer first, then:
 | `Alt`+`T` | roll left | roll right |
 | `Alt`+`E` | turn left | turn right |
 
-Press **G** (no click) to level the item flat on the deck, keeping its heading. Hold **Shift** for a finer step. Axes follow your look, flattened to the deck when the item is on a boat.
+T is also the game's Throw key; while you hold the hammer, letting go of Q/T/E never drops or throws it. Press **G** (no click) to level the item flat on the deck, keeping its heading. Hold **Shift** for a finer step. Axes follow your look, flattened to the deck when the item is on a boat.
 
 Config: `BepInEx\config\com.dizzy.sailwind.nudge.cfg`
 
