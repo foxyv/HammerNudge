@@ -123,23 +123,28 @@ namespace Dizzy.Nudge
         // Empty barrels can sit at big=false, so vanilla CanNail is false and
         // OnAltActivate never un-nails. Do not call CanNail (other hammer mods
         // postfix it). Unlock any sold nailed look-target when Q/T/E is up.
-        internal static bool TryUnlockNailed(ShipItemHammer hammer)
+        // Returns the item a right click should unlock, or null.
+        internal static ShipItem FindUnlockTarget(ShipItemHammer hammer)
         {
             if (NudgeConfig.Enabled == null || !NudgeConfig.Enabled.Value)
-                return false;
+                return null;
             if (hammer == null || hammer.held == null)
-                return false;
+                return null;
             if (GetHeldAxis() != NudgeAxis.None)
-                return false;
+                return null;
 
             ShipItem item = hammer.held.GetPointedAtItem();
-            if (!IsNudgeTarget(item))
-                return false;
+            return IsNudgeTarget(item) ? item : null;
+        }
+
+        internal static void Unlock(ShipItem item)
+        {
+            if (item == null)
+                return;
 
             item.nailed = false;
             if (UISoundPlayer.instance != null)
                 UISoundPlayer.instance.PlayUISound(UISounds.winchUnclick, 1f, 0.7f);
-            return true;
         }
 
         internal static bool TryNudge(ShipItem item, GoPointer pointer, bool rightClick)
@@ -172,6 +177,8 @@ namespace Dizzy.Nudge
                 if (!SyncTwin(item))
                     return false;
             }
+
+            CoopSync.BroadcastPose(item);
 
             PlayTap();
             return true;
@@ -377,6 +384,7 @@ namespace Dizzy.Nudge
             if (!SyncTwin(item))
                 return false;
 
+            CoopSync.BroadcastPose(item);
             PlayTap();
             return true;
         }

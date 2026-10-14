@@ -22,6 +22,17 @@ namespace Dizzy.Nudge.Patches
                 nameof(HammerNudgePatches.OnAltActivatePrefix),
                 Priority.First);
 
+            // Runs before SailwindCoop's postfix so it sees the item un-nailed.
+            TryPostfix(
+                harmony,
+                typeof(ShipItemHammer),
+                nameof(ShipItemHammer.OnAltActivate),
+                Type.EmptyTypes,
+                typeof(HammerNudgePatches),
+                nameof(HammerNudgePatches.OnAltActivatePostfix),
+                Priority.First,
+                before: new[] { CoopSync.CoopGuid });
+
             // Subclasses (bottles/barrels, lamp hooks, lights, …) override
             // OnItemClick; Harmony does not run the ShipItem prefix on those.
             PatchDeclaredOnItemClicks(harmony);
