@@ -62,7 +62,7 @@ namespace Dizzy.Nudge.Patches
                 typeof(LookUIPatches),
                 nameof(LookUIPatches.ShowLookTextPostfix),
                 Priority.First,
-                after: new[] { "com.nandbrew.furniturefix" });
+                after: new[] { "com.nandbrew.furniturefix", "com.keevi.defthands" });
 
             TryPostfix(
                 harmony,

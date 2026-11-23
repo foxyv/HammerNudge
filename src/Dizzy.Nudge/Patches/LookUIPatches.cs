@@ -11,6 +11,8 @@ namespace Dizzy.Nudge.Patches
         private static object _pickUp;
         private static object _activate;
         private static bool _resolvedKeys;
+        private static string _gameControls;
+        private static string _nudgeControls;
 
         internal static void ShowLookTextPostfix(LookUI __instance, GoPointerButton button)
         {
@@ -34,10 +36,7 @@ namespace Dizzy.Nudge.Patches
                 {
                     TextMesh controls = look.Field("controlsText").GetValue<TextMesh>();
                     if (controls != null)
-                    {
-                        NudgeAxis axis = NudgeMover.GetHeldAxis();
-                        controls.text = NudgeMover.GetPrompt(axis) ?? NudgeMover.GetIdleControls();
-                    }
+                        controls.text = BuildControls(controls.text);
                 }
 
                 if (hammer || bed)
@@ -81,6 +80,29 @@ namespace Dizzy.Nudge.Patches
                 return true;
             Component logic = button.GetComponent("BedLogic");
             return logic != null;
+        }
+
+        private static string BuildControls(string shown)
+        {
+            if (shown == _nudgeControls)
+                shown = _gameControls;
+            _gameControls = shown;
+
+            NudgeAxis axis = NudgeMover.GetHeldAxis();
+            string prompt = NudgeMover.GetPrompt(axis) ?? NudgeMover.GetIdleControls();
+            _nudgeControls = axis == NudgeAxis.None ? MoveKeysAboveClickLines(prompt, shown) : prompt;
+            return _nudgeControls;
+        }
+
+        private static string MoveKeysAboveClickLines(string prompt, string shown)
+        {
+            int split = prompt.IndexOf('\n');
+            if (split < 0)
+                return prompt;
+
+            int last = string.IsNullOrEmpty(shown) ? -1 : shown.LastIndexOf('\n');
+            string above = last < 0 ? "" : shown.Substring(0, last);
+            return prompt.Substring(0, split) + "\n" + above + prompt.Substring(split);
         }
 
         // Furniture Fix blanks bed key labels. Restore each side only when that
@@ -135,7 +157,7 @@ namespace Dizzy.Nudge.Patches
                 return;
             }
 
-            int n = text.IndexOf('\n');
+            int n = text.LastIndexOf('\n');
             if (n < 0)
             {
                 hasLeft = false;
@@ -143,7 +165,8 @@ namespace Dizzy.Nudge.Patches
                 return;
             }
 
-            hasLeft = text.Substring(0, n).Trim().Length > 0;
+            int start = n == 0 ? 0 : text.LastIndexOf('\n', n - 1) + 1;
+            hasLeft = text.Substring(start, n - start).Trim().Length > 0;
             hasRight = text.Substring(n + 1).Trim().Length > 0;
         }
 
