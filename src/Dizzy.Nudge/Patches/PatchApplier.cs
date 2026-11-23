@@ -61,8 +61,16 @@ namespace Dizzy.Nudge.Patches
                 new[] { typeof(GoPointerButton) },
                 typeof(LookUIPatches),
                 nameof(LookUIPatches.ShowLookTextPostfix),
-                Priority.First,
+                Priority.Last,
                 after: new[] { "com.nandbrew.furniturefix" });
+
+            TryPostfix(
+                harmony,
+                typeof(LookUI),
+                nameof(LookUI.ClearText),
+                Type.EmptyTypes,
+                typeof(LookUIPatches),
+                nameof(LookUIPatches.ClearTextPostfix));
 
             TryPostfix(
                 harmony,

@@ -92,6 +92,8 @@ namespace Dizzy.Nudge
                 "LevelKey",
                 new KeyboardShortcut(KeyCode.G),
                 "While holding a hammer and looking at a locked item, press to flatten it to the deck (keep yaw).");
+
+            config.SettingChanged += (sender, args) => NudgeMover.ResetIdleControls();
         }
     }
 }
