@@ -16,7 +16,7 @@ namespace Dizzy.Nudge
     {
         public const string PluginGuid = "com.dizzy.sailwind.nudge";
         public const string PluginName = "Dizzy Nudge";
-        public const string PluginVersion = "0.1.6";
+        public const string PluginVersion = "0.1.8";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;

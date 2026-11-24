@@ -32,20 +32,42 @@ namespace Dizzy.Nudge.Patches
             }
         }
 
+        private static ShipItem _pendingUnlock;
+
         internal static bool OnAltActivatePrefix(ShipItemHammer __instance)
         {
+            _pendingUnlock = null;
             try
             {
                 if (NudgeMover.TryNudgeFromRightClick(__instance))
                     return false;
-                if (NudgeMover.TryUnlockNailed(__instance))
-                    return false;
-                return true;
+
+                // The un-nail itself waits for the postfix. SailwindCoop spots an
+                // unlock by reading `nailed` in its own prefix (which runs after
+                // this one) and again in its postfix; un-nailing here hid it, so
+                // other players never saw the item unlock.
+                _pendingUnlock = NudgeMover.FindUnlockTarget(__instance);
+                return _pendingUnlock == null;
             }
             catch (Exception e)
             {
+                _pendingUnlock = null;
                 Plugin.Log.LogWarning("Nudge right-click failed: " + e.Message);
                 return true;
+            }
+        }
+
+        internal static void OnAltActivatePostfix()
+        {
+            ShipItem item = _pendingUnlock;
+            _pendingUnlock = null;
+            try
+            {
+                NudgeMover.Unlock(item);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("Nudge unlock failed: " + e.Message);
             }
         }
 
