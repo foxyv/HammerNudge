@@ -11,6 +11,12 @@ namespace Dizzy.Nudge.Patches
         private static object _pickUp;
         private static object _activate;
         private static bool _resolvedKeys;
+        private static string _gameControls;
+        private static string _nudgeControls;
+        private static TextMesh _keysText;
+        private static GoPointerButton _controlsButton;
+        private static string _shownKeys;
+        private static int _shownLines;
 
         internal static void ShowLookTextPostfix(LookUI __instance, GoPointerButton button)
         {
@@ -19,7 +25,10 @@ namespace Dizzy.Nudge.Patches
                 if (__instance == null || button == null)
                     return;
                 if (NudgeConfig.Enabled == null || !NudgeConfig.Enabled.Value)
+                {
+                    HideKeys();
                     return;
+                }
 
                 Traverse look = Traverse.Create(__instance);
                 GoPointer pointer = look.Field("pointer").GetValue<GoPointer>();
@@ -29,23 +38,40 @@ namespace Dizzy.Nudge.Patches
                 bool hammer = NudgeMover.HoldingHammer(pointer);
                 bool bed = IsBed(button);
                 ShipItem item = button.GetComponent<ShipItem>();
+                bool target = hammer && NudgeMover.IsNudgeTarget(item);
+                string prompt = target ? NudgeMover.GetPrompt(NudgeMover.GetHeldAxis()) : null;
 
-                if (hammer && NudgeMover.IsNudgeTarget(item))
+                TextMesh controls = look.Field("controlsText").GetValue<TextMesh>();
+                string shown = null;
+                if (target && controls != null)
                 {
-                    TextMesh controls = look.Field("controlsText").GetValue<TextMesh>();
-                    if (controls != null)
-                    {
-                        NudgeAxis axis = NudgeMover.GetHeldAxis();
-                        controls.text = NudgeMover.GetPrompt(axis) ?? NudgeMover.GetIdleControls();
-                    }
+                    shown = BuildControls(button, controls.text, prompt);
+                    controls.text = shown;
                 }
 
                 if (hammer || bed)
                     ApplyLookIcons(look, item, hammer);
+
+                if (target && prompt == null && controls != null)
+                    ShowKeys(controls, shown, NudgeMover.GetIdleControls());
+                else
+                    HideKeys();
             }
             catch (Exception e)
             {
                 Plugin.Log.LogWarning("Nudge look text failed: " + e.Message);
+            }
+        }
+
+        internal static void ClearTextPostfix()
+        {
+            try
+            {
+                HideKeys();
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("Nudge key line hide failed: " + e.Message);
             }
         }
 
@@ -83,6 +109,103 @@ namespace Dizzy.Nudge.Patches
             return logic != null;
         }
 
+        private static string BuildControls(GoPointerButton button, string shown, string prompt)
+        {
+            if (shown == _nudgeControls)
+                shown = button == _controlsButton ? _gameControls : "";
+            _controlsButton = button;
+            _gameControls = shown;
+
+            if (prompt == null)
+            {
+                _nudgeControls = null;
+                return shown;
+            }
+
+            string above;
+            string clicks;
+            SplitClickLines(shown, out above, out clicks);
+            _nudgeControls = above.Length == 0 ? prompt : above + "\n" + prompt;
+            return _nudgeControls;
+        }
+
+        private static void ShowKeys(TextMesh controls, string shown, string keys)
+        {
+            TextMesh text = GetKeysText(controls);
+            int lines = Math.Max(2, CountLines(shown));
+            if (keys != _shownKeys || lines != _shownLines)
+            {
+                _shownKeys = keys;
+                _shownLines = lines;
+                text.text = keys + new string('\n', lines);
+            }
+
+            if (!text.gameObject.activeSelf)
+                text.gameObject.SetActive(true);
+        }
+
+        private static void HideKeys()
+        {
+            if (_keysText != null && _keysText.gameObject.activeSelf)
+                _keysText.gameObject.SetActive(false);
+        }
+
+        private static TextMesh GetKeysText(TextMesh controls)
+        {
+            if (_keysText != null && _keysText.transform.parent == controls.transform)
+                return _keysText;
+
+            if (_keysText != null)
+                UnityEngine.Object.Destroy(_keysText.gameObject);
+
+            _keysText = UnityEngine.Object.Instantiate(controls, controls.transform, false);
+            _keysText.name = "nudge keys text";
+            _shownKeys = null;
+            Transform keys = _keysText.transform;
+            for (int i = keys.childCount - 1; i >= 0; i--)
+            {
+                GameObject child = keys.GetChild(i).gameObject;
+                child.SetActive(false);
+                UnityEngine.Object.Destroy(child);
+            }
+
+            keys.localPosition = Vector3.zero;
+            keys.localRotation = Quaternion.identity;
+            keys.localScale = Vector3.one;
+            return _keysText;
+        }
+
+        private static int CountLines(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return 1;
+
+            int lines = 1;
+            foreach (char c in text)
+            {
+                if (c == '\n')
+                    lines++;
+            }
+
+            return lines;
+        }
+
+        private static void SplitClickLines(string text, out string above, out string clicks)
+        {
+            text = text ?? "";
+            int right = text.LastIndexOf('\n');
+            if (right < 0)
+            {
+                above = "";
+                clicks = "\n" + text;
+                return;
+            }
+
+            int left = right == 0 ? -1 : text.LastIndexOf('\n', right - 1);
+            above = left < 0 ? "" : text.Substring(0, left);
+            clicks = text.Substring(left + 1);
+        }
+
         // Furniture Fix blanks bed key labels. Restore each side only when that
         // side has an action and is in keyboard-icon mode so F/R are not drawn
         // on mouse icons or on right-only prompts (nailed Sleep, hammer lock).
@@ -112,7 +235,7 @@ namespace Dizzy.Nudge.Patches
             }
             else
             {
-                HideSide(look, "mouseLIcon", "textLicon");
+                HideSide(look, "textLicon");
             }
 
             if (hasRight)
@@ -122,36 +245,22 @@ namespace Dizzy.Nudge.Patches
             }
             else
             {
-                HideSide(look, "mouseRIcon", "textRIcon");
+                HideSide(look, "textRIcon");
             }
         }
 
         private static void ReadLines(string text, out bool hasLeft, out bool hasRight)
         {
-            if (string.IsNullOrEmpty(text))
-            {
-                hasLeft = false;
-                hasRight = false;
-                return;
-            }
-
-            int n = text.IndexOf('\n');
-            if (n < 0)
-            {
-                hasLeft = false;
-                hasRight = text.Trim().Length > 0;
-                return;
-            }
-
-            hasLeft = text.Substring(0, n).Trim().Length > 0;
-            hasRight = text.Substring(n + 1).Trim().Length > 0;
+            string above;
+            string clicks;
+            SplitClickLines(text, out above, out clicks);
+            int n = clicks.IndexOf('\n');
+            hasLeft = clicks.Substring(0, n).Trim().Length > 0;
+            hasRight = clicks.Substring(n + 1).Trim().Length > 0;
         }
 
-        private static void HideSide(Traverse look, string mouseField, string textField)
+        private static void HideSide(Traverse look, string textField)
         {
-            Renderer mouse = look.Field(mouseField).GetValue<Renderer>();
-            if (mouse != null)
-                mouse.enabled = false;
             TextMesh text = look.Field(textField).GetValue<TextMesh>();
             if (text != null)
                 text.gameObject.SetActive(false);

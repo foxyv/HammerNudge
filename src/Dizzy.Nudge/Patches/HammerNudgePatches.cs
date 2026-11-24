@@ -88,6 +88,22 @@ namespace Dizzy.Nudge.Patches
             }
         }
 
+        internal static bool BetterFishingSealPrefix(ShipItemHammer __0)
+        {
+            try
+            {
+                GoPointer pointer = __0 != null ? __0.held : null;
+                return pointer == null
+                    || !NudgeMover.IsNudgeClick(__0)
+                    || !NudgeMover.IsNudgeTarget(pointer.GetPointedAtItem());
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("Nudge BetterFishing skip failed: " + e.Message);
+                return true;
+            }
+        }
+
         internal static bool DropItemPrefix(GoPointer __instance)
         {
             try

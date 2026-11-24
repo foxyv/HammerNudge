@@ -14,6 +14,9 @@ namespace Dizzy.Nudge
 
     internal static class NudgeMover
     {
+        private static string _nudgeKeys;
+        private static string _rotateKeys;
+
         internal static NudgeAxis GetHeldAxis()
         {
             if (NudgeConfig.Enabled == null || !NudgeConfig.Enabled.Value)
@@ -219,10 +222,7 @@ namespace Dizzy.Nudge
                     case NudgeAxis.Strafe:
                         return "turn left\nturn right";
                     default:
-                        return KeyLabel(NudgeConfig.RotateModifier) + "+"
-                            + KeyLabel(NudgeConfig.AwayKey) + "/"
-                            + KeyLabel(NudgeConfig.VerticalKey) + "/"
-                            + KeyLabel(NudgeConfig.StrafeKey) + " rotate\nunlock";
+                        return null;
                 }
             }
 
@@ -241,10 +241,34 @@ namespace Dizzy.Nudge
 
         internal static string GetIdleControls()
         {
-            return KeyLabel(NudgeConfig.AwayKey) + "/"
-                + KeyLabel(NudgeConfig.VerticalKey) + "/"
-                + KeyLabel(NudgeConfig.StrafeKey) + " nudge  "
-                + KeyLabel(NudgeConfig.LevelKey) + " level\nunlock";
+            if (IsRotateHeld())
+            {
+                if (_rotateKeys == null)
+                {
+                    _rotateKeys = KeyLabel(NudgeConfig.RotateModifier) + "+"
+                        + KeyLabel(NudgeConfig.AwayKey) + "/"
+                        + KeyLabel(NudgeConfig.VerticalKey) + "/"
+                        + KeyLabel(NudgeConfig.StrafeKey) + " rotate";
+                }
+
+                return _rotateKeys;
+            }
+
+            if (_nudgeKeys == null)
+            {
+                _nudgeKeys = KeyLabel(NudgeConfig.AwayKey) + "/"
+                    + KeyLabel(NudgeConfig.VerticalKey) + "/"
+                    + KeyLabel(NudgeConfig.StrafeKey) + " nudge  "
+                    + KeyLabel(NudgeConfig.LevelKey) + " level";
+            }
+
+            return _nudgeKeys;
+        }
+
+        internal static void ResetIdleControls()
+        {
+            _nudgeKeys = null;
+            _rotateKeys = null;
         }
 
         private static string KeyLabel(ConfigEntry<KeyboardShortcut> entry)
