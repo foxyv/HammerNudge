@@ -64,6 +64,8 @@ Works alongside [UnlimitedHammer](https://thunderstore.io/c/sailwind/p/DogEggz/U
 - **Furniture Fix** still uses Alt for empty-hand furniture pickup.
 - **HooksHangMore:** a nudge click on a lamp hook never hangs the hammer there, so the hook stays free for lamps.
 - **Deft Hands** also uses Alt. Alt+Q/T/E right-click still rotates; Deft Hands still freezes the camera and turns the hammer in hand while Alt is held.
+- **BetterFishing:** a nudge right-click on a locked sealable crate nudges it without sealing it. A plain right-click still unlocks and seals.
+- **SailwindCoop:** nudges, rotations, levelling and unlocks are sent to the other players in the lobby. Only the player nudging needs Dizzy Nudge.
 
 ## Install
 
