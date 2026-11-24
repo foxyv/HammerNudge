@@ -8,8 +8,10 @@ namespace Dizzy.Nudge.Patches
     internal static class PatchApplier
     {
         internal const string HooksHangMoreGuid = "com.raddude.hookshangmore";
+        internal const string BetterFishingGuid = "com.raddude.betterfishing";
         private const string DeftHandsGuid = "com.keevi.defthands";
         private const string HooksHangMoreLampHookPatches = "HooksHangMore.AttachablePatches+ShipItemLampHookPatches";
+        private const string BetterFishingHammerPatches = "BetterFishing.HammerPatches+ShipItemHammerPatches";
 
         internal static void Apply(Harmony harmony)
         {
@@ -26,6 +28,7 @@ namespace Dizzy.Nudge.Patches
             // OnItemClick; Harmony does not run the ShipItem prefix on those.
             PatchDeclaredOnItemClicks(harmony);
             PatchHooksHangMoreLampHook(harmony);
+            PatchBetterFishingSeal(harmony);
 
             TryPrefix(
                 harmony,
@@ -167,6 +170,28 @@ namespace Dizzy.Nudge.Patches
                 null,
                 typeof(HammerNudgePatches),
                 nameof(HammerNudgePatches.HooksHangMoreLampHookClickPrefix),
+                Priority.First);
+        }
+
+        private static void PatchBetterFishingSeal(Harmony harmony)
+        {
+            if (!Chainloader.PluginInfos.ContainsKey(BetterFishingGuid))
+                return;
+
+            Type patches = AccessTools.TypeByName(BetterFishingHammerPatches);
+            if (patches == null)
+            {
+                Plugin.Log.LogWarning("Nudge: BetterFishing hammer patch not found; a nudge click may still seal a crate.");
+                return;
+            }
+
+            TryPrefix(
+                harmony,
+                patches,
+                "OnAltActivatePatch",
+                null,
+                typeof(HammerNudgePatches),
+                nameof(HammerNudgePatches.BetterFishingSealPrefix),
                 Priority.First);
         }
 
